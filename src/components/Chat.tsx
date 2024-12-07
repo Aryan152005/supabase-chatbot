@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { FileUpload } from "./FileUpload";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { HfInference } from "@huggingface/inference";
 
 export function Chat() {
   const [messages, setMessages] = useState<{ role: string; content: string }[]>(
@@ -11,11 +12,11 @@ export function Chat() {
   );
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
-  const [sessionId, setSessionId] = useState<string | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClientComponentClient();
+  const client = new HfInference("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"); // Replace with your Hugging Face API key.
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -41,39 +42,26 @@ export function Chat() {
 
       console.log("Sending to Hugging Face API:", input);
 
-      const response = await fetch(
-        "https://api-inference.huggingface.co/models/openai-community/gpt2",
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer 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`, // Replace with your API key
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ inputs: input }),
+      const stream = client.chatCompletionStream({
+        model: "Qwen/Qwen2.5-Coder-32B-Instruct", // Replace with the desired model.
+        messages: [{ role: "user", content: input }],
+        max_tokens: 500,
+      });
+
+      let generatedText = "";
+
+      for await (const chunk of stream) {
+        if (chunk.choices && chunk.choices.length > 0) {
+          const newContent = chunk.choices[0].delta.content;
+          generatedText += newContent;
+
+          // Update the chat messages in real-time as the response streams in
+          setMessages((prev) => [
+            ...newMessages,
+            { role: "assistant", content: generatedText },
+          ]);
         }
-      );
-
-      console.log("Hugging Face API response status:", response.status);
-      const data = await response.json();
-      console.log("Hugging Face API response data:", data);
-
-      if (!response.ok) {
-        throw new Error(
-          `Failed to fetch response from Hugging Face API: ${response.statusText}`
-        );
       }
-
-      // Correctly handle the response (array with generated_text)
-      if (Array.isArray(data) && data[0]?.generated_text) {
-        setMessages([
-          ...newMessages,
-          { role: "assistant", content: data[0].generated_text },
-        ]);
-      } else {
-        throw new Error("Unexpected response format from Hugging Face API.");
-      }
-
-      setSessionId(null); // Optional: Session management for Hugging Face might not be necessary
     } catch (error: any) {
       console.error("Error:", error);
       setError(error.message || "An error occurred. Please try again.");
