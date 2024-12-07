@@ -38,26 +38,40 @@ export function Chat() {
         return
       }
 
-      // Send request to API
-      const response = await fetch('/api/chat', {
+      // Log the input data before making the API call
+      console.log("Sending to Hugging Face API:", input)
+
+      // Call Hugging Face API (with your Hugging Face model endpoint)
+      const response = await fetch('https://api-inference.huggingface.co/models/YOUR_MODEL_NAME', {
         method: 'POST',
         headers: {
+          'Authorization': `Bearer YOUR_HUGGING_FACE_API_KEY`, // Replace with your API key
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ messages: newMessages, sessionId, userId: user.id }),
+        body: JSON.stringify({ inputs: input }), // Send the user's input as the input to the model
       })
 
+      // Log the response status and body for debugging
+      console.log("Hugging Face API response status:", response.status)
+      const data = await response.json()
+      console.log("Hugging Face API response data:", data)
+
       if (!response.ok) {
-        throw new Error('Failed to fetch response from chat API.')
+        throw new Error(`Failed to fetch response from Hugging Face API: ${response.statusText}`)
       }
 
-      const data = await response.json()
+      // Assuming `data.generated_text` is the field you need (check response format)
+      if (data.generated_text) {
+        setMessages([...newMessages, { role: 'assistant', content: data.generated_text }])
+      } else {
+        throw new Error('Unexpected response format from Hugging Face API.')
+      }
 
-      // Update messages with AI response
-      setMessages([...newMessages, { role: 'assistant', content: data.text }])
-      setSessionId(data.sessionId)
+      setSessionId(null) // Session management might not be required with Hugging Face API
     } catch (error: any) {
       console.error('Error:', error)
+
+      // Display more descriptive error message in the UI
       setError(error.message || 'An error occurred. Please try again.')
     } finally {
       setIsTyping(false)
