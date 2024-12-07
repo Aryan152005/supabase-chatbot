@@ -1,17 +1,20 @@
-import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server'
+import * as fs from 'fs'
+import path from 'path'
 
-export async function POST(req: Request) {
-  try {
-    // Handle file upload logic
-    const formData = await req.formData();
-    const file = formData.get('file') as Blob;
+export async function POST(request: Request) {
+  const formData = await request.formData()
+  const file = formData.get('file') as Blob
 
-    // Process the file (e.g., upload to Supabase Storage)
-    // Add your file handling logic here
-
-    return NextResponse.json({ message: 'File uploaded successfully' });
-  } catch (error) {
-    console.error('Error in /api/upload route:', error);
-    return NextResponse.json({ error: 'File upload failed' }, { status: 500 });
+  if (!file) {
+    return NextResponse.json({ error: 'No file uploaded' }, { status: 400 })
   }
+
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const uploadPath = path.join(process.cwd(), 'uploads', file.name)
+
+  // Save file to the server (make sure the "uploads" directory exists)
+  fs.writeFileSync(uploadPath, buffer)
+
+  return NextResponse.json({ message: 'File uploaded successfully!' })
 }
