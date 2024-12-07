@@ -1,80 +1,90 @@
-'use client'
+"use client";
 
-import { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { FileUpload } from './FileUpload'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { useState, useRef } from "react";
+import { motion } from "framer-motion";
+import { FileUpload } from "./FileUpload";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 
 export function Chat() {
-  const [messages, setMessages] = useState<{ role: string; content: string }[]>([])
-  const [input, setInput] = useState('')
-  const [isTyping, setIsTyping] = useState(false)
-  const [sessionId, setSessionId] = useState<string | null>(null)
-  const [showUpload, setShowUpload] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const supabase = createClientComponentClient()
+  const [messages, setMessages] = useState<{ role: string; content: string }[]>(
+    []
+  );
+  const [input, setInput] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showUpload, setShowUpload] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const supabase = createClientComponentClient();
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
+    e.preventDefault();
 
-    // Prevent empty input submission
-    if (!input.trim()) return
+    if (!input.trim()) return;
 
-    const newMessages = [...messages, { role: 'user', content: input }]
-    setMessages(newMessages)
-    setInput('')
-    setIsTyping(true)
-    setError(null)
+    const newMessages = [...messages, { role: "user", content: input }];
+    setMessages(newMessages);
+    setInput("");
+    setIsTyping(true);
+    setError(null);
 
     try {
-      // Get authenticated user
-      const { data: { user } } = await supabase.auth.getUser()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      // Handle case where user is not authenticated
       if (!user) {
-        setError('User not authenticated.')
-        setIsTyping(false)
-        return
+        setError("User not authenticated.");
+        setIsTyping(false);
+        return;
       }
 
-      // Sending request to Hugging Face API
-      const response = await fetch('https://api-inference.huggingface.co/models/YOUR_MODEL_NAME', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer YOUR_VALID_HUGGING_FACE_API_KEY`, // Replace with your valid API key
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ inputs: input }), // User's input for the model
-      })
+      console.log("Sending to Hugging Face API:", input);
+
+      const response = await fetch(
+        "https://api-inference.huggingface.co/models/openai-community/gpt2",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer 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`, // Replace with your API key
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ inputs: input }),
+        }
+      );
+
+      console.log("Hugging Face API response status:", response.status);
+      const data = await response.json();
+      console.log("Hugging Face API response data:", data);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch response from Hugging Face API.')
+        throw new Error(
+          `Failed to fetch response from Hugging Face API: ${response.statusText}`
+        );
       }
 
-      const data = await response.json()
-
-      // Check if the response is an array and handle accordingly
-      if (Array.isArray(data) && data.length > 0) {
-        const generatedText = data[0].generated_text // Extract the generated text from the response
-
-        // Update messages with AI response
-        setMessages([...newMessages, { role: 'assistant', content: generatedText }])
-        setSessionId(data.sessionId) // Adjust this line based on your API's response structure
+      // Correctly handle the response (array with generated_text)
+      if (Array.isArray(data) && data[0]?.generated_text) {
+        setMessages([
+          ...newMessages,
+          { role: "assistant", content: data[0].generated_text },
+        ]);
       } else {
-        throw new Error('Unexpected response format from Hugging Face API.')
+        throw new Error("Unexpected response format from Hugging Face API.");
       }
+
+      setSessionId(null); // Optional: Session management for Hugging Face might not be necessary
     } catch (error: any) {
-      console.error('Error:', error)
-      setError(error.message || 'An error occurred. Please try again.')
+      console.error("Error:", error);
+      setError(error.message || "An error occurred. Please try again.");
     } finally {
-      setIsTyping(false)
+      setIsTyping(false);
     }
-  }
+  };
 
   const handleFileIconClick = () => {
-    setShowUpload(!showUpload)
-  }
+    setShowUpload(!showUpload);
+  };
 
   return (
     <div className="flex flex-col w-full h-[600px] bg-gray-800 rounded-lg shadow-xl overflow-hidden">
@@ -85,7 +95,9 @@ export function Chat() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className={`p-3 rounded-lg ${m.role === 'user' ? 'bg-blue-600 ml-auto' : 'bg-gray-700'} max-w-[80%]`}
+            className={`p-3 rounded-lg ${
+              m.role === "user" ? "bg-blue-600 ml-auto" : "bg-gray-700"
+            } max-w-[80%]`}
           >
             <p className="text-white">{m.content}</p>
           </motion.div>
@@ -125,8 +137,19 @@ export function Chat() {
             className="absolute right-12 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white rounded-full p-2"
             type="submit"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+              />
             </svg>
           </motion.button>
           <motion.button
@@ -136,13 +159,26 @@ export function Chat() {
             type="button"
             onClick={handleFileIconClick}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
             </svg>
           </motion.button>
         </div>
       </form>
-      {showUpload && <FileUpload onUploadComplete={() => setShowUpload(false)} />}
+      {showUpload && (
+        <FileUpload onUploadComplete={() => setShowUpload(false)} />
+      )}
     </div>
-  )
+  );
 }
