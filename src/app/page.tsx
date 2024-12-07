@@ -6,6 +6,7 @@ import { Chat } from '../components/Chat'
 import { FunkyBackground } from '../components/FunkyBackground'
 import { Auth } from '../components/Auth'
 import { motion } from 'framer-motion'
+import UploadForm from './components/UploadForm'
 
 export default function Home() {
   const [session, setSession] = useState<any>(null)
@@ -45,6 +46,8 @@ export default function Home() {
             >
               Logout
             </motion.button>
+            {/* Include the UploadForm below the chatbot */}
+            <UploadForm />
           </>
         ) : (
           <Auth />
