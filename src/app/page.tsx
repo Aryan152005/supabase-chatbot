@@ -1,60 +1,57 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Chat } from '../components/Chat'
+import { FunkyBackground } from '../components/FunkyBackground'
+import { Auth } from '../components/Auth'
+import { motion } from 'framer-motion'
+import UploadForm from '../components/UploadFrom'
 
 export default function Home() {
-  const [file, setFile] = useState<File | null>(null)
-  const [message, setMessage] = useState<string>('')
+  const [session, setSession] = useState<any>(null)
+  const supabase = createClientComponentClient()
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0]
-    if (selectedFile) {
-      setFile(selectedFile)
-    }
-  }
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+    })
 
-  const handleFileUpload = async () => {
-    if (!file) {
-      setMessage('Please select a file to upload')
-      return
-    }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
 
-    const formData = new FormData()
-    formData.append('file', file)
+    return () => subscription.unsubscribe()
+  }, [supabase.auth])
 
-    try {
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData,
-      })
-      const result = await response.json()
-
-      if (response.ok) {
-        setMessage('File uploaded successfully!')
-      } else {
-        setMessage(`Error: ${result.error}`)
-      }
-    } catch (error) {
-      setMessage('Error uploading file')
-    }
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
   }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-gray-900">
+      <FunkyBackground />
       <div className="w-full max-w-md">
-        <h1 className="text-4xl font-bold mb-8 text-white text-center">AI Chatbot File Upload</h1>
-        <input
-          type="file"
-          onChange={handleFileChange}
-          className="mb-4 p-2 bg-gray-700 text-white rounded"
-        />
-        <button
-          onClick={handleFileUpload}
-          className="p-3 bg-blue-600 text-white rounded-lg"
-        >
-          Upload File
-        </button>
-        {message && <p className="text-white mt-4">{message}</p>}
+        <h1 className="text-4xl font-bold mb-8 text-white text-center">AI Chatbot with RAG</h1>
+        {session ? (
+          <>
+            <Chat />
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleLogout}
+              className="w-full mt-4 p-3 bg-red-600 text-white rounded-lg transition-colors duration-200"
+            >
+              Logout
+            </motion.button>
+            {/* Include the UploadForm below the chatbot */}
+            <UploadForm />
+          </>
+        ) : (
+          <Auth />
+        )}
       </div>
     </main>
   )
