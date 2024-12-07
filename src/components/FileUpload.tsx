@@ -12,6 +12,7 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
   const [file, setFile] = useState<File | null>(null)
   const [uploading, setUploading] = useState(false)
   const [message, setMessage] = useState('')
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClientComponentClient()
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -26,6 +27,7 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
 
     setUploading(true)
     setMessage('')
+    setError(null)
 
     const formData = new FormData()
     formData.append('file', file)
@@ -33,8 +35,6 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
     try {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) throw new Error('User not authenticated')
-
-      formData.append('userId', user.id)
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -50,7 +50,7 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
       onUploadComplete()
     } catch (error) {
       console.error('Error:', error)
-      setMessage('Failed to upload file. Please try again.')
+      setError('Failed to upload file. Please try again.')
     } finally {
       setUploading(false)
     }
@@ -78,7 +78,9 @@ export function FileUpload({ onUploadComplete }: FileUploadProps) {
       >
         {uploading ? 'Uploading...' : 'Upload'}
       </motion.button>
-      {message && <p className="mt-2 text-sm text-white">{message}</p>}
+      {message && <p className="mt-2 text-sm text-green-400">{message}</p>}
+      {error && <p className="mt-2 text-sm text-red-400">{error}</p>}
     </motion.form>
   )
 }
+

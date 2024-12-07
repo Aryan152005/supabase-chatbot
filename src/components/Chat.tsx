@@ -11,38 +11,54 @@ export function Chat() {
   const [isTyping, setIsTyping] = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [showUpload, setShowUpload] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const supabase = createClientComponentClient()
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
+
+    // Prevent empty input submission
     if (!input.trim()) return
 
     const newMessages = [...messages, { role: 'user', content: input }]
     setMessages(newMessages)
     setInput('')
     setIsTyping(true)
+    setError(null)
 
     try {
+      // Get authenticated user
       const { data: { user } } = await supabase.auth.getUser()
+
+      // Handle case where user is not authenticated
+      if (!user) {
+        setError('User not authenticated.')
+        setIsTyping(false)
+        return
+      }
+
+      // Send request to API
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ messages: newMessages, sessionId, userId: user?.id }),
+        body: JSON.stringify({ messages: newMessages, sessionId, userId: user.id }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to fetch response')
+        throw new Error('Failed to fetch response from chat API.')
       }
 
       const data = await response.json()
+
+      // Update messages with AI response
       setMessages([...newMessages, { role: 'assistant', content: data.text }])
       setSessionId(data.sessionId)
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error:', error)
-      setMessages([...newMessages, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.' }])
+      setError(error.message || 'An error occurred. Please try again.')
     } finally {
       setIsTyping(false)
     }
@@ -61,9 +77,7 @@ export function Chat() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className={`p-3 rounded-lg ${
-              m.role === 'user' ? 'bg-blue-600 ml-auto' : 'bg-gray-700'
-            } max-w-[80%]`}
+            className={`p-3 rounded-lg ${m.role === 'user' ? 'bg-blue-600 ml-auto' : 'bg-gray-700'} max-w-[80%]`}
           >
             <p className="text-white">{m.content}</p>
           </motion.div>
@@ -76,6 +90,16 @@ export function Chat() {
             className="p-3 rounded-lg bg-gray-700 max-w-[80%]"
           >
             <p className="text-white">AI is typing...</p>
+          </motion.div>
+        )}
+        {error && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+            className="p-3 rounded-lg bg-red-600 max-w-[80%]"
+          >
+            <p className="text-white">{error}</p>
           </motion.div>
         )}
       </div>

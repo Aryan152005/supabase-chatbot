@@ -6,16 +6,23 @@ import { Chat } from '../components/Chat'
 import { FunkyBackground } from '../components/FunkyBackground'
 import { Auth } from '../components/Auth'
 import { motion } from 'framer-motion'
-import UploadForm from '../components/UploadFrom'
 
 export default function Home() {
   const [session, setSession] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const fetchSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) {
+        console.error('Error fetching session:', error)
+      }
       setSession(session)
-    })
+      setLoading(false)
+    }
+
+    fetchSession()
 
     const {
       data: { subscription },
@@ -28,6 +35,14 @@ export default function Home() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-900">
+        <p className="text-white">Loading...</p>
+      </div>
+    )
   }
 
   return (
@@ -46,8 +61,6 @@ export default function Home() {
             >
               Logout
             </motion.button>
-            {/* Include the UploadForm below the chatbot */}
-            <UploadForm />
           </>
         ) : (
           <Auth />
@@ -56,3 +69,4 @@ export default function Home() {
     </main>
   )
 }
+
